@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 
 type Task = { multiplicant: number; multiplier: number };
 type Answer = { task: Task; userAnswer: number };
-type Game = { antall: number; answers: Answer[] };
 
 function Multiplikasjon() {
   const inputRef = useRef<HTMLInputElement>(null);
