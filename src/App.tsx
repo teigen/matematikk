@@ -10,7 +10,7 @@ import Divisjon from "./pages/Divisjon";
 
 function App() {
   return (
-    <Router>
+    <Router basename={import.meta.env.BASE_URL}>
       <main className="container">
         <nav>
           <ul>
