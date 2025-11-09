@@ -1,84 +1,180 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from "react";
+
+type Task = { multiplicant: number; multiplier: number };
+type Answer = { task: Task; userAnswer: number };
+type Game = { antall: number; answers: Answer[] };
 
 function Multiplikasjon() {
-  const [num1, setNum1] = useState(0)
-  const [num2, setNum2] = useState(0)
-  const [answer, setAnswer] = useState('')
-  const [message, setMessage] = useState('')
-  const [score, setScore] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const generateQuestion = () => {
-    setNum1(Math.floor(Math.random() * 11))
-    setNum2(Math.floor(Math.random() * 11))
-    setAnswer('')
-    setMessage('')
-  }
+  const [task, setTask] = useState<Task>({ multiplicant: 0, multiplier: 0 });
+
+  const [answer, setAnswer] = useState("");
+  const [score, setScore] = useState(0);
+
+  const [invalid, setInvalid] = useState<boolean>();
+  const [currentTimeout, setCurrentTimeout] = useState(0);
+
+  const [answers, setAnswers] = useState<Answer[]>([]);
+
+  const [genTasks, setGenTasks] = useState(10);
+  const [started, setStarted] = useState<number>();
+  const [ended, setEnded] = useState<number>();
+
+  const generateTask = () => {
+    const multiplicant = Math.floor(Math.random() * 10 + 1);
+    const multiplier = Math.floor(Math.random() * 10 + 1);
+    setTask({ multiplicant, multiplier });
+  };
+
+  const focus = () => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
 
   useEffect(() => {
-    generateQuestion()
-  }, [])
+    generateTask();
+    focus();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const userAnswer = parseInt(answer)
-    const correctAnswer = num1 * num2
+    e.preventDefault();
+    const userAnswer = parseInt(answer);
+    const correctAnswer = task.multiplicant * task.multiplier;
+    const isValid = userAnswer == correctAnswer;
 
-    if (userAnswer === correctAnswer) {
-      setMessage('✓ Correct!')
-      setScore(score + 1)
-      setTimeout(generateQuestion, 1500)
-    } else {
-      setMessage('✗ Wrong! Try again.')
-      setAnswer('')
+    setAnswers([{ task, userAnswer }, ...answers]);
+
+    clearTimeout(currentTimeout);
+    setInvalid(!isValid);
+
+    setCurrentTimeout(
+      setTimeout(() => {
+        setInvalid(undefined);
+      }, 1500)
+    );
+
+    setAnswer("");
+    focus();
+
+    if (isValid) {
+      const newScore = score + 1;
+      setScore(newScore);
+      if (newScore == genTasks) {
+        setEnded(Date.now());
+      } else {
+        generateTask();
+      }
     }
-  }
+  };
+
+  const renderContent = () => {
+    if (started && ended) {
+      return renderResult(ended - started, genTasks);
+    } else if (!started) {
+      return renderStart();
+    } else return renderForm();
+  };
+
+  const renderResult = (elapsed: number, antall: number) => {
+    const sekunder = Math.floor(elapsed / 1000);
+    return (
+      <div>
+        <div>
+          Hurra! Du klarte {antall} regnestykker på {sekunder} sekunder!
+        </div>
+        <button
+          onClick={() => {
+            setAnswers([]);
+            setStarted(undefined);
+            setEnded(undefined);
+            setScore(0);
+          }}
+        >
+          Prøv igjen!
+        </button>
+      </div>
+    );
+  };
+
+  const renderStart = () => (
+    <div>
+      <input
+        type="range"
+        min={1}
+        max={100}
+        value={genTasks}
+        onChange={(e) => setGenTasks(parseInt(e.currentTarget.value))}
+      ></input>
+      <button onClick={() => setStarted(Date.now())}>
+        Start {genTasks} regnestykker!
+      </button>
+    </div>
+  );
+
+  const renderForm = () => (
+    <form onSubmit={handleSubmit}>
+      <div style={{ display: "inline-flex", width: "100%" }}>
+        <label
+          htmlFor="answer"
+          style={{ whiteSpace: "nowrap", fontSize: "2rem" }}
+        >
+          {task.multiplicant} * {task.multiplier} =
+        </label>
+        <input
+          ref={inputRef}
+          style={{ width: "inherit", marginLeft: "0.5em" }}
+          id="answer"
+          type="number"
+          pattern="[0-9]*"
+          value={answer}
+          onChange={(e) => setAnswer(e.target.value)}
+          placeholder="Svar"
+          autoFocus
+          required
+          aria-invalid={invalid}
+        />
+      </div>
+
+      <button type="submit">Svar</button>
+    </form>
+  );
 
   return (
-    <main className="container">
-      <nav>
-        <ul>
-          <li><strong>Matematikk</strong></li>
-        </ul>
-        <ul>
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/multiplikasjon">Multiplikasjon</Link></li>
-          <li><Link to="/divisjon">Divisjon</Link></li>
-        </ul>
-      </nav>
-
-      <section>
-        <article>
-          <header>
-            <h2>Multiplication Practice</h2>
-          </header>
-          <p>Score: <strong>{score}</strong></p>
-          <form onSubmit={handleSubmit}>
-            <p style={{ fontSize: '2rem', margin: '1rem 0' }}>
-              <strong>{num1} × {num2} = ?</strong>
-            </p>
-            <input
-              type="number"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Your answer"
-              autoFocus
-              required
-            />
-            <button type="submit">Check Answer</button>
-            <button type="button" onClick={generateQuestion} className="secondary">
-              Skip Question
-            </button>
-          </form>
-          {message && (
-            <p style={{ marginTop: '1rem', fontSize: '1.2rem' }}>
-              <strong>{message}</strong>
-            </p>
-          )}
-        </article>
-      </section>
-    </main>
-  )
+    <section>
+      <article>
+        <header style={{ display: "flex", justifyContent: "space-between" }}>
+          <h2>Multiplikasjon</h2> <strong>Riktige: {score}</strong>
+        </header>
+        {renderContent()}
+        {answers.map((answer, i) => {
+          const correct =
+            answer.task.multiplicant * answer.task.multiplier ==
+            answer.userAnswer;
+          return (
+            <div
+              key={`answer-${i}`}
+              style={{
+                display: "flex",
+                justifyContent: "flex-start",
+              }}
+            >
+              <div style={{ marginRight: "0.5em" }}>
+                {correct ? (
+                  <strong style={{ color: "green" }}>✓</strong>
+                ) : (
+                  <strong style={{ color: "red" }}>✗</strong>
+                )}
+              </div>
+              {answer.task.multiplicant} * {answer.task.multiplier} ={" "}
+              {answer.userAnswer}
+            </div>
+          );
+        })}
+      </article>
+    </section>
+  );
 }
 
-export default Multiplikasjon
+export default Multiplikasjon;
